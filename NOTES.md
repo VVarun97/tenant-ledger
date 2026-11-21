@@ -1,0 +1,8 @@
+- Solved: partial batch ingestion, DB-level idempotency, immutable reversals, audit logs, point-in-time balances, monthly rollups, and role-scoped reads.
+- Why: prevents silent balance corruption, cross-tenant data exposure, and unrecoverable manual edits.
+- Money safety: API validates `Decimal` strings and persists integer minor units (`signed_amount_minor`) per currency to avoid float rounding errors.
+- Isolation & concurrency: every query filters by `tenant_id`; unique constraints on `(tenant_id, external_id)` and `(tenant_id, reverses_tx_id)` block duplicate posts and double reversals.
+- Least privilege: `support` role can view current balances only (no raw ledger history or historical snapshots); cross-tenant lookups return `404`.
+- Skipped: FX rate conversion, API key/JWT auth, and rate limiting to keep the 1-hour implementation focused on core ledger invariants.
+- Breaks at 100x load: SQLite single-writer lock contention on concurrent batch writes and on-the-fly aggregation scans for high-volume clients.
+- Scale fix: move to PostgreSQL with partitioned `ledger_entries`, composite `(tenant_id, client_ref, effective_at)` indexes, and materialized monthly rollups.
